@@ -1,0 +1,1753 @@
+<html lang="sr"><head><script>(function(firebaseConfig, initialAuthToken, appId) {
+        window.__firebase_config = firebaseConfig;
+        window.__initial_auth_token = initialAuthToken;
+        window.__app_id = appId;
+            })("\n{\n  \"apiKey\": \"AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtbHvZY\",\n  \"authDomain\": \"bard-frontend.firebaseapp.com\",\n  \"projectId\": \"bard-frontend\",\n  \"storageBucket\": \"bard-frontend.firebasestorage.app\",\n  \"messagingSenderId\": \"175205271074\",\n  \"appId\": \"1:175205271074:web:2b7bd4d34d33bf38e6ec7b\"\n}\n","eyJhbGciOiJSUzI1NiIsImtpZCI6ImY2ZTAxMDEwMWQ1NmE1NmIyZDY4Y2U3NDZkNmI5YzJlMmFlYzU5ZGQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmaXJlYmFzZS1hZG1pbnNkay1mYnN2Y0BiYXJkLWZyb250ZW5kLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwiYXVkIjoiaHR0cHM6XC9cL2lkZW50aXR5dG9vbGtpdC5nb29nbGVhcGlzLmNvbVwvZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCJ1aWQiOiIwMDU0MDY5OTc4OTIzMDYzODMxMiIsImlzcyI6ImZpcmViYXNlLWFkbWluc2RrLWZic3ZjQGJhcmQtZnJvbnRlbmQuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJleHAiOjE3NDg3Mjc4MjIsImlhdCI6MTc0ODcyNDIyMiwiYWxnIjoiUlMyNTYifQ.y6tctfleAbvrCPc5I4d7o7EVGtjzxZ90v4sdpmet4Mv_dfnd3sS8Lj2GAi1Wu7K2uPUHfWYx4FCfCuQMkyUcK2QnUIsmsp5g-Xj7SLL4i0FeOXPiJQGn2kZ4yFnUclKezerV8KvyW2mXjfvNa74lgkEg7I7Y8rTQJJ_CaRNVpoUJEumfgx9rZRTO6jOcUohqqZIGwHHKK6vCz-SPpBEgdGz7mz4dePl6YylrEVqix_Gmd4vEdzsnHvXQeS_20eWLSDV7pJGKDZpNzjshYkrPQm1Eyb3l1ynQcQ0Mgp42UmlCF7mHXoIRbqPnVZExoNUMi_T9pbDbREqvHfuhcKwxww","c_9d2f21bc35a1e479_vr360-tour-creator-full-html-637")</script><script>(function() {
+  // Ensure this script is executed only once
+  if (window.firebaseAuthBridgeScriptLoaded) {
+    return;
+  }
+  window.firebaseAuthBridgeScriptLoaded = true;
+
+  let nextTokenPromiseId = 0;
+
+  // Stores { resolve, reject } for ongoing token requests
+  const pendingTokenPromises = {};
+
+  // Listen for messages from the Host Application
+  window.addEventListener('message', function(event) {
+
+    const messageData = event.data;
+
+  if (messageData && messageData.type === 'RESOLVE_NEW_FIREBASE_TOKEN') {
+      const { success, token, error, promiseId } = messageData ?? {};
+      if (pendingTokenPromises[promiseId]) {
+        if (success) {
+          pendingTokenPromises[promiseId].resolve(token);
+        } else {
+          pendingTokenPromises[promiseId].reject(new Error(error || 'Token refresh failed from host.'));
+        }
+        delete pendingTokenPromises[promiseId];
+      }
+    }
+  });
+
+  // Expose a function for the Generated App to request a new Firebase token
+  window.requestNewFirebaseToken = function() {
+    const currentPromiseId = nextTokenPromiseId++;
+    const promise = new Promise((resolve, reject) => {
+      pendingTokenPromises[currentPromiseId] = { resolve, reject };
+    });
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'REQUEST_NEW_FIREBASE_TOKEN',
+        promiseId: currentPromiseId
+      }, '*');
+    } else {
+      pendingTokenPromises[currentPromiseId].reject(new Error('No parent window to request token from.'));
+      delete pendingTokenPromises[currentPromiseId];
+    }
+    return promise;
+  };
+})();</script><script>let realOriginalGetUserMedia = null;
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  realOriginalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+}
+
+(function() {
+  if (navigator.mediaDevices && navigator.mediaDevices.__proto__) {
+    try {
+      Object.defineProperty(navigator.mediaDevices.__proto__, 'getUserMedia', {
+        get: function() {
+          return undefined; // Or throw an error
+        },
+        configurable: false
+      });
+    } catch (error) {
+      console.error("Error defining prototype getter:", error);
+    }
+  }
+})();
+
+(function() {
+  let originalGetUserMedia = realOriginalGetUserMedia;
+
+  const pendingMediaResolvers = {};
+  let nextMediaPromiseId = 0;
+
+  function interceptGetUserMedia() {
+    if (navigator.mediaDevices) {
+      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+        value: function(constraints) {
+          const mediaPromiseId = nextMediaPromiseId++;
+          const promise = new Promise((resolve, reject) => {
+            pendingMediaResolvers[mediaPromiseId] = (granted) => {
+              delete pendingMediaResolvers[mediaPromiseId];
+              if (granted) {
+                if (originalGetUserMedia) {
+                  originalGetUserMedia(constraints).then(resolve).catch(reject);
+                } else {
+                  reject(new Error("Original getUserMedia not available."));
+                }
+              } else {
+              reject(new DOMException('Permission denied', 'NotAllowedError'));
+            }
+          };
+        });
+
+        window.parent.postMessage({
+          type: 'requestMediaPermission',
+          constraints: constraints,
+          promiseId: mediaPromiseId,
+        }, '*');
+
+        return promise;
+      },
+      writable: false,
+      configurable: false
+    });
+    }
+  }
+
+  interceptGetUserMedia();
+
+  const observer = new MutationObserver(function(mutationsList, observer) {
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'reconfigured' && mutation.name === 'getUserMedia' && mutation.object === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'attributes' && mutation.attributeName === 'getUserMedia' && mutation.target === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'childList' && mutation.addedNodes) {
+        mutation.addedNodes.forEach(node => {
+          if (node === navigator.mediaDevices) {
+            interceptGetUserMedia();
+          }
+        });
+      }
+    }
+  });
+
+  window.addEventListener('message', function(event) {
+    if (event.data) {
+      if (event.data.type === 'resolveMediaPermission') {
+        const { promiseId, granted } = event.data;
+        if (pendingMediaResolvers[promiseId]) {
+          pendingMediaResolvers[promiseId](granted);
+        }
+      }
+    }
+  });
+
+})();</script><script>(function() {
+  const originalFetch = window.fetch;
+  const googleLlmBaseApiUrls = [
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict',
+    'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predictLongRunning',
+    'https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predict',
+    'https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predictLongRunning',
+  ];
+
+  const pendingFetchResolvers = {};
+  let nextPromiseId = 0;
+
+  function handleStringInput(input, optionsArgument) {
+    const actualUrl = input;
+    const fetchCallArgs = [actualUrl, optionsArgument];
+    const effectiveOptions = optionsArgument || {};
+    const bodyForApiKeyCheck = effectiveOptions.body;
+    const bodyForPostMessage = effectiveOptions.body;
+    return { actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage };
+  }
+
+  function handleRequestInput(input, optionsArgument) {
+    const actualUrl = input.url;
+    const fetchCallArgs = [input, optionsArgument];
+    const effectiveOptions = { method: input.method, headers: new Headers(input.headers) };
+    let bodyForApiKeyCheck;
+    let bodyForPostMessage;
+
+    if (optionsArgument) {
+      if (optionsArgument.method) effectiveOptions.method = optionsArgument.method;
+      if (optionsArgument.headers) effectiveOptions.headers = new Headers(optionsArgument.headers);
+      if ('body' in optionsArgument) {
+        bodyForApiKeyCheck = optionsArgument.body;
+        bodyForPostMessage = optionsArgument.body;
+      } else {
+        bodyForApiKeyCheck = undefined;
+        bodyForPostMessage = input.body;
+      }
+    } else {
+      bodyForApiKeyCheck = undefined;
+      bodyForPostMessage = input.body;
+    }
+    return { actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage };
+  }
+
+  window.fetch = function(input, optionsArgument) {
+    let actualUrl;
+    let fetchCallArgs;
+    let effectiveOptions = {};
+    let bodyForApiKeyCheck;
+    let bodyForPostMessage;
+
+    if (typeof input === 'string') {
+      ({actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage} = handleStringInput(input, optionsArgument));
+    } else if (input instanceof Request) {
+      ({actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage} = handleRequestInput(input, optionsArgument));
+    } else {
+      return originalFetch.apply(window, [input, optionsArgument]);
+    }
+
+    effectiveOptions.method = effectiveOptions.method || 'GET';
+    if (!effectiveOptions.headers) {
+      effectiveOptions.headers = new Headers();
+    }
+
+
+    if (typeof actualUrl === 'string' && googleLlmBaseApiUrls.some((url) => actualUrl.startsWith(url))) {
+      let apiKeyIsNull = true;
+
+      const regex = new RegExp("models/([^:]+)");
+      const modelNameMatch = actualUrl.match(regex);
+      const modelName = modelNameMatch ? modelNameMatch[1] : 'unspecified';
+
+
+      try {
+        const urlObject = new URL(actualUrl);  // Use URL object for robust parsing
+        const apiKeyParam = urlObject.searchParams.get('key');
+        if (apiKeyParam) {
+          apiKeyIsNull = false;
+        }
+      } catch (e) {
+        // Continue checks even if URL parsing fails
+      }
+
+      if (apiKeyIsNull && effectiveOptions.headers) {
+        const h = new Headers(effectiveOptions.headers);
+        const apiKeyHeaderValue = h.get('X-API-Key') || h.get('x-api-key');
+        if (apiKeyHeaderValue) {
+          apiKeyIsNull = false;
+          return originalFetch.apply(window, fetchCallArgs);
+        }
+      }
+
+      if (apiKeyIsNull && effectiveOptions.method && ['POST', 'PUT', 'PATCH'].includes(effectiveOptions.method.toUpperCase()) && typeof bodyForApiKeyCheck === 'string') {
+        try {
+          const bodyData = JSON.parse(bodyForApiKeyCheck);
+          if (bodyData && bodyData.apiKey) {
+            apiKeyIsNull = false;
+            return originalFetch.apply(window, fetchCallArgs);
+          }
+        } catch (e) {
+          // Ignore JSON parsing errors
+        }
+      }
+
+      if(apiKeyIsNull) {
+        const promiseId = nextPromiseId++;
+        const promise = new Promise((resolve) => {
+          pendingFetchResolvers[promiseId] = (resolvedResponse) => {
+            delete pendingFetchResolvers[promiseId];
+            resolve(resolvedResponse);
+          };
+        });
+
+        let serializedBodyForPostMessage;
+        if (typeof bodyForPostMessage === 'string' || bodyForPostMessage == null) {
+            serializedBodyForPostMessage = bodyForPostMessage;
+        } else if (bodyForPostMessage instanceof ReadableStream) {
+            serializedBodyForPostMessage = null;
+        } else {
+            try {
+                serializedBodyForPostMessage = JSON.stringify(bodyForPostMessage);
+            } catch (e) {
+                serializedBodyForPostMessage = null;
+            }
+        }
+
+        const messageOptions = {
+            method: effectiveOptions.method,
+            headers: Object.fromEntries(new Headers(effectiveOptions.headers).entries()),
+            body: serializedBodyForPostMessage
+        };
+
+        window.parent.postMessage({
+          type: 'requestFetch',
+          url: actualUrl,
+          modelName: 'models/' + modelName,
+          options: messageOptions,
+          promiseId: promiseId,
+        }, '*');
+
+        return promise;
+      }
+      return originalFetch.apply(window, fetchCallArgs);
+    }
+    return originalFetch.apply(window, fetchCallArgs);
+  };
+
+  window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'resolveFetch') {
+      const { promiseId, response } = event.data;
+      if (pendingFetchResolvers[promiseId]) {
+        try {
+          const reconstructedResponse = new Response(response.body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: new Headers(response.headers),
+          });
+          pendingFetchResolvers[promiseId](reconstructedResponse);
+        } catch (error) {
+          pendingFetchResolvers[promiseId](new Response(null, { status: 500, statusText: "Interceptor Response Reconstruction Error" }));
+        }
+      }
+    }
+  });
+
+})();</script><script>(function() {
+  const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
+
+    /**
+   * Normalizes an error event or a promise rejection reason into a structured error object.
+   * @param {*} errorEventOrReason The error object or reason.
+   * @return {object} Structured error data { message, name, stack }.
+   */
+  function getErrorObject(errorEventOrReason) {
+    if (errorEventOrReason instanceof Error) {
+      return {
+        message: errorEventOrReason.message,
+        name: errorEventOrReason.name,
+        stack: errorEventOrReason.stack,
+      };
+    }
+    // Fallback for non-Error objects.
+    try {
+      return {
+        message: JSON.stringify(errorEventOrReason),
+        name: 'UnknownErrorType',
+        stack: null,
+      };
+    } catch (e) {
+      return {
+        message: String(errorEventOrReason),
+        name: 'UnknownErrorTypeNonStringifiable',
+        stack: null,
+      };
+    }
+  }
+
+  /**
+   * Converts an array of arguments (from log/error) into a single string.
+   * Handles Error objects specially to include their message and stack.
+   * @param {Array<*>} args - Arguments passed to console methods.
+   * @return {string} A string representation of the arguments.
+   */
+  function stringifyArgs(args) {
+    return args
+      .map((arg) => {
+        if (arg instanceof Error) {
+          const {message, stack} = arg;
+          return `Error: ${message}${stack ? ('\nStack: ' + stack) : ''}`;
+        }
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            return JSON.stringify(arg);
+          } catch (error) {
+            return '[Circular Object]';
+          }
+        } else {
+          return String(arg);
+        }
+      })
+      .join(' ');
+  }
+
+  console.log = function(...args) {
+    const logString = stringifyArgs(args);
+    window.parent.postMessage({ type: 'log', message: logString }, '*');
+    originalConsoleLog.apply(console, args);
+  };
+
+  console.error = function(...args) {
+    let errorData;
+    if (args.length > 0 && args[0] instanceof Error) {
+      const err = args[0];
+      // If the first arg is an Error, capture its details.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        ...getErrorObject(err),
+        rawArgsString: stringifyArgs(args.slice(1)),
+        timestamp: new Date().toISOString(),
+      };
+    } else {
+      // If not an Error object, treat all args as a general error message.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        message: stringifyArgs(args),
+        name: 'ConsoleLoggedError',
+        stack: null,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    window.parent.postMessage(errorData, '*');
+    originalConsoleError.apply(console, args);
+  };
+
+  // Listen for global unhandled synchronous errors.
+  window.addEventListener('error', function(event) {
+    const errorDetails = event.error ? getErrorObject(event.error) : {
+      message: event.message,
+      name: 'GlobalError',
+      stack: null,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+    };
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'global',
+      ...errorDetails,
+      message: errorDetails.message || event.message,
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+  // Listen for unhandled promise rejections (asynchronous errors).
+  window.addEventListener('unhandledrejection', function(event) {
+    const errorDetails = getErrorObject(event.reason);
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'unhandledrejection',
+      ...errorDetails,
+      message: errorDetails.message || 'Unhandled Promise Rejection',
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+})();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR360 Tour Creator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
+    <style>
+        /* Definicija CSS varijabli za boje i razmake */
+        :root {
+            --primary-color: #2c3e50;
+            /* Tamno plavo-siva */
+            --secondary-color: #34495e;
+            /* Nešto svetlija tamno plavo-siva */
+            --accent-color: #3498db;
+            /* Svetlo plava */
+            --light-color: #ecf0f1;
+            /* Svetlo siva */
+            --dark-color: #2c3e50;
+            /* Ista kao primarna za tekst */
+            --danger-color: #e74c3c;
+            /* Crvena */
+            --warning-color: #f39c12;
+            /* Narandžasta */
+            --border-radius: 8px;
+            --padding-base: 15px;
+            --button-height: 40px;
+            --icon-button-size: 48px;
+            /* Veličina za dugmad samo sa ikonicama */
+        }
+
+        /* Stilovi za tamni režim */
+        body.dark-mode {
+            background-color: #1a1a1a;
+            color: var(--light-color);
+        }
+
+        .dark-mode .top-menu,
+        .dark-mode .control-panel {
+            background-color: #2a2a2a;
+            border-color: #3a3a3a;
+        }
+
+        .dark-mode .top-menu button,
+        .dark-mode .control-panel button,
+        .dark-mode select,
+        .dark-mode input[type="text"] {
+            background-color: #3a3a3a;
+            color: var(--light-color);
+            border-color: #4a4a4a;
+        }
+
+        .dark-mode .top-menu button:hover,
+        .dark-mode .control-panel button:hover {
+            background-color: #4a627a;
+            /* Tamnija sekundarna boja */
+        }
+
+        .dark-mode .tab-content {
+            background-color: #2a2a2a;
+            border-color: #3a3a3a;
+        }
+
+        .dark-mode .loading-spinner {
+            border-color: var(--light-color);
+            border-top-color: var(--accent-color);
+        }
+
+        /* Resetovanje podrazumevanih stilova pretraživača */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: var(--dark-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            /* Sprečava skrolovanje tela */
+        }
+
+        /* Pomoćne klase */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Glavni kontejner aplikacije */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* Gornji meni */
+        .top-menu {
+            display: flex;
+            justify-content: flex-end;
+            /* Poravnaj elemente desno */
+            align-items: center;
+            padding: 10px var(--padding-base);
+            background-color: var(--primary-color);
+            color: var(--light-color);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+        }
+
+        .top-menu button {
+            background-color: var(--secondary-color);
+            color: var(--light-color);
+            border: none;
+            padding: 8px 15px;
+            margin-left: 10px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .top-menu button:hover {
+            background-color: #4a627a;
+            /* Tamnija sekundarna boja */
+        }
+
+        /* Glavni sadržaj (pregledač i kontrolni panel) */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            /* Složi pregledač i kontrolni panel vertikalno */
+        }
+
+        /* Kontejner za Pannellum pregledač */
+        #panorama-viewer {
+            flex-grow: 1;
+            /* Zauzima raspoloživi prostor */
+            width: 100%;
+            height: 100%;
+            /* Dodato za Pannellum */
+            background-color: black;
+            /* Crna pozadina za pregledač */
+            z-index: 1;
+            /* Ispod kontrolnog panela */
+            cursor: grab;
+            /* Podrazumevani kursor */
+        }
+
+        #panorama-viewer.adding-mode {
+            cursor: crosshair;
+            /* Kursor kada se dodaje hotspot/zvuk */
+        }
+
+        /* Pannellum Specific Styles (prilagođeno za hotspotove) */
+        .pnlm-hotspot {
+            background-color: var(--accent-color);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s ease;
+        }
+
+        .pnlm-hotspot:hover {
+            transform: scale(1.1);
+        }
+
+        .pnlm-hotspot.scene-hotspot {
+            background-color: var(--accent-color);
+            /* Plava za prelaz */
+        }
+
+        .pnlm-hotspot.audio-hotspot {
+            background-color: var(--success-color);
+            /* Zelena za zvuk */
+        }
+
+        .pnlm-hotspot.info-hotspot {
+            background-color: var(--warning-color);
+            /* Narandžasta za info */
+        }
+
+
+        /* Kontrolni panel na dnu */
+        .control-panel {
+            position: relative;
+            /* Za z-index */
+            z-index: 5;
+            /* Iznad pregledača panorama */
+            background-color: var(--primary-color);
+            padding: var(--padding-base);
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-top-left-radius: var(--border-radius);
+            border-top-right-radius: var(--border-radius);
+            min-height: 120px;
+            /* Minimalna visina za panel */
+        }
+
+        /* Sadržaj taba (svi elementi u jednom tabu) */
+        .tab-content {
+            display: grid;
+            /* Koristi mrežu za bolji raspored kontrola */
+            grid-template-columns: repeat(auto-fit, minmax(var(--icon-button-size), 1fr));
+            /* Prilagodljiva mreža */
+            gap: 10px;
+            align-items: center;
+            background-color: var(--secondary-color);
+            padding: var(--padding-base);
+            border-radius: var(--border-radius);
+        }
+
+        .tab-content label {
+            color: var(--light-color);
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .tab-content select,
+        .tab-content input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--primary-color);
+            background-color: var(--primary-color);
+            color: var(--light-color);
+            font-size: 1em;
+            appearance: none;
+            /* Ukloni podrazumevanu strelicu za select */
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ecf0f1%22%20d%3D%22M287%2C197.3L146.2%2C56.6L5.4%2C197.3c-7.5%2C7.5-19.8%2C7.5-27.3%2C0c-7.5-7.5-7.5-19.8%2C0-27.3L132.5%2C22.1c7.5-7.5%2C19.8-7.5%2C27.3%2C0l146.2%2C146.2c7.5%2C7.5%2C7.5%2C19.8%2C0%2C27.3C306.8%2C204.8%2C294.5%2C204.8%2C287%2C197.3z%22%2F%3E%3C%2Fsvg%3E');
+            background-repeat: no-repeat;
+            background-position: right 8px top 50%;
+            background-size: 12px auto;
+        }
+
+        .tab-content button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            font-size: 0.95em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            width: 100%;
+            /* Puna širina unutar ćelije mreže */
+            height: var(--icon-button-size);
+            /* Visina jednaka širini za kvadratna dugmad */
+            padding: 0;
+            /* Ukloni padding za dugmad sa ikonicama */
+            font-size: 1.4em;
+            /* Povećaj veličinu ikone */
+            flex-shrink: 0;
+            /* Sprečava smanjivanje u fleks/gridu */
+        }
+
+        .tab-content button:hover {
+            background-color: #2980b9;
+            /* Tamnija akcentna boja */
+            transform: translateY(-1px);
+        }
+
+        .tab-content .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            grid-column: span 2;
+            /* Zauzima dve kolone */
+        }
+
+        /* Poseban stil za input grupu za prompt, da zauzme celu širinu */
+        .tab-content .input-group.full-width {
+            grid-column: 1 / -1;
+            /* Zauzima celu širinu mreže */
+        }
+
+        /* Stil za dugme za upload, da zauzme celu širinu */
+        #upload-local-panorama-button {
+            grid-column: 1 / -1;
+            /* Zauzima celu širinu mreže */
+            height: var(--button-height);
+            /* Vrati normalnu visinu za dugme sa tekstom */
+            font-size: 0.95em;
+            padding: 10px 15px;
+            /* Dodaj padding nazad */
+        }
+
+
+        /* Loading Spinner */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+            flex-direction: column;
+            gap: 15px;
+            font-size: 1.2em;
+        }
+
+        .loading-spinner {
+            border: 8px solid var(--light-color);
+            border-top: 8px solid var(--accent-color);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Custom Message Box */
+        .custom-message-box {
+            position: fixed;
+            top: 20px;
+            /* Pozicionirano na vrhu */
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 25px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            z-index: 1001;
+            /* Iznad loading overlay-a */
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            max-width: 80%;
+            color: white;
+            background-color: var(--accent-color);
+            /* Podrazumevana boja */
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            /* Iznad svih ostalih elemenata */
+        }
+
+        .modal-content {
+            background-color: var(--primary-color);
+            color: var(--light-color);
+            padding: calc(var(--padding-base) * 1.5);
+            border-radius: var(--border-radius);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            width: 90%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 10px;
+            color: var(--accent-color);
+        }
+
+        .modal-content .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .modal-content input[type="text"],
+        .modal-content select {
+            width: 100%;
+            padding: 10px;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--secondary-color);
+            background-color: var(--secondary-color);
+            color: var(--light-color);
+        }
+
+        .modal-content .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-content button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .modal-content button#confirm-add-hotspot {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .modal-content button#confirm-add-hotspot:hover {
+            background-color: #2980b9;
+        }
+
+        .modal-content button.cancel-button {
+            background-color: var(--secondary-color);
+            color: var(--light-color);
+        }
+
+        .modal-content button.cancel-button:hover {
+            background-color: #4a627a;
+        }
+
+
+        /* Responsivna podešavanja */
+        @media (max-width: 768px) {
+            .top-menu {
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 10px;
+                padding: 10px;
+            }
+
+            .top-menu button {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .control-panel {
+                padding: 10px;
+            }
+
+            .tab-content {
+                grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+                /* Manje ćelije na malim ekranima */
+                justify-items: center;
+            }
+
+            .tab-content .input-group {
+                grid-column: 1 / -1;
+                /* Zauzima celu širinu */
+            }
+
+            .tab-content button {
+                width: 48px;
+                /* Fiksna veličina za ikone na malim ekranima */
+                height: 48px;
+            }
+
+            #upload-local-panorama-button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body class="dark-mode">
+    <div class="app-container">
+        <div class="top-menu">
+            <button id="dark-mode-toggle"><i class="fas fa-sun"></i> Svetli režim</button>
+            <button id="preview-button"><i class="fas fa-eye"></i> Pregled</button>
+            <button id="export-button"><i class="fas fa-download"></i> Izvezi HTML</button>
+        </div>
+
+        <div class="main-content">
+            <div id="panorama-viewer" class="pannellum-viewer pnlm-container" tabindex="0"><div class="pnlm-ui pnlm-grab"><div class="pnlm-dragfix"></div><span class="pnlm-about-msg"><a href="https://pannellum.org/" target="_blank">Pannellum</a> 2.5.6</span><div class="pnlm-sprite pnlm-hot-spot-debug-indicator" style="display: none;"></div><div class="pnlm-panorama-info" style="display: none;"><div class="pnlm-title-box"></div><div class="pnlm-author-box"></div></div><div class="pnlm-load-box" style="display: none;"><p>Loading...</p><div class="pnlm-lbox" style="display: block;"><div class="pnlm-loading"></div></div><div class="pnlm-lbar" style="display: none;"><div class="pnlm-lbar-fill"></div></div><p class="pnlm-lmsg"></p></div><div class="pnlm-error-msg pnlm-info-box" style="display: table;"><p>The file <a href="https://pannellum.org/images/bunker.jpg">https://pannellum.org/images/bunker.jpg</a> could not be accessed.</p></div><div class="pnlm-controls-container"><div class="pnlm-zoom-controls pnlm-controls" style="display: block;"><div class="pnlm-zoom-in pnlm-sprite pnlm-control"></div><div class="pnlm-zoom-out pnlm-sprite pnlm-control"></div></div></div><div class="pnlm-load-button" style="display: none;"><p>Click to<br>Load<br>Panorama</p></div><div class="pnlm-compass pnlm-controls pnlm-control"></div></div><div class="pnlm-render-container" style="display: none;"></div></div>
+            <div id="loading-overlay" class="loading-overlay hidden">
+                <div class="loading-spinner"></div>
+                <span>Učitavanje...</span>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div id="tab-content-container">
+                <div class="tab-content active" id="all-controls">
+                    <div class="input-group full-width">
+                        <label for="panorama-select">Izaberi Panoramu:</label>
+                        <select id="panorama-select">
+                            <option value="bunker">Bunker</option>
+                            <option value="alma">Alma</option>
+                            <option value="car">Car</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group full-width">
+                        <label for="local-panorama-upload">Učitaj Panoramu sa diska:</label>
+                        <input type="file" id="local-panorama-upload" accept="image/*" class="hidden">
+                        <button id="upload-local-panorama-button" title="Učitaj Panoramu"><i class="fas fa-upload"></i> Učitaj</button>
+                    </div>
+
+                    <button id="fullscreen-button" title="Celozaslonski prikaz"><i class="fas fa-expand"></i></button>
+                    <button id="add-polygon-button" title="Dodaj Polygon"><i class="fas fa-vector-square"></i></button>
+                    <button id="add-polygon-video-button" title="Polygon Video Spot"><i class="fas fa-video"></i></button>
+                    <button id="add-polygon-image-button" title="Polygon Image Spot"><i class="fas fa-image"></i></button>
+                    <button id="add-web-content-button" title="Dodaj Web Sadržaj"><i class="fas fa-globe-americas"></i></button>
+                    <button id="add-hotspot-button" title="Dodaj Hotspot"><i class="fas fa-plus-circle"></i></button>
+                    <button id="add-lensflare-button" title="Dodaj Lensflare"><i class="fas fa-sun"></i></button>
+                    <button id="add-sound-spot-button" title="Dodaj Zvučnu Tačku"><i class="fas fa-volume-up"></i></button>
+                    <button id="crop-button" title="Iseci Panoramu"><i class="fas fa-crop"></i></button>
+                    <button id="prev-panorama-button" title="Prethodna Panorama"><i class="fas fa-arrow-left"></i></button>
+                    <button id="next-panorama-button" title="Sledeća Panorama"><i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="hotspot-input-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Dodaj Hotspot za Prelaz</h3>
+            <div class="input-group">
+                <label for="hotspot-type-select">Tip hotspota:</label>
+                <select id="hotspot-type-select">
+                    <option value="scene">Prelaz na scenu</option>
+                    <option value="info">Informacija</option>
+                    <option value="audio">Audio</option>
+                </select>
+            </div>
+            <div class="input-group" id="hotspot-target-panorama-group">
+                <label for="hotspot-target-panorama">Izaberi ciljnu panoramu:</label>
+                <select id="hotspot-target-panorama"></select>
+            </div>
+            <div class="input-group" id="hotspot-audio-url-group" style="display: none;">
+                <label for="hotspot-audio-url">Audio URL:</label>
+                <input type="text" id="hotspot-audio-url" placeholder="Npr. https://example.com/sound.mp3" value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">
+            </div>
+            <div class="input-group">
+                <label for="hotspot-text">Tekst hotspota (opciono):</label>
+                <input type="text" id="hotspot-text" placeholder="Npr. 'Idi u sledeću sobu'">
+            </div>
+            <div class="modal-buttons">
+                <button id="confirm-add-hotspot">Dodaj Hotspot</button>
+                <button id="cancel-add-hotspot" class="cancel-button">Poništi</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js"></script> <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js" crossorigin="anonymous"></script>
+
+    <script>
+        // Globalne varijable za Firebase (obezbeđene od strane Canvas okruženja)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Inicijalizacija Firebase-a
+        let app;
+        let db;
+        let auth;
+        let storage; // Dodata varijabla za Firebase Storage
+        let userId;
+        let viewer; // Instanca Pannellum pregledača
+        let currentPanoramaConfig; // Trenutna aktivna konfiguracija panorame
+
+        // Inicijalna lista panorama
+        const defaultPanoramas = [
+            // Promenjene URL adrese za pouzdanije učitavanje
+            { id: 'bunker', url: 'https://pannellum.org/images/bunker.jpg', title: 'Bunker', hotspots: [] },
+            { id: 'alma', url: 'https://cdn.pannellum.org/2.5/images/alma.jpg', title: 'Alma', hotspots: [] },
+            { id: 'car', url: 'https://cdn.pannellum.org/2.5/images/car.jpg', title: 'Car', hotspots: [] }
+        ];
+        let currentPanoramaIndex = 0; // Index trenutno aktivne panorame u appState.panoramasData
+
+        // DOM elementi
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const previewButton = document.getElementById('preview-button');
+        const exportButton = document.getElementById('export-button');
+        const panoramaViewerDiv = document.getElementById('panorama-viewer');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        const panoramaSelect = document.getElementById('panorama-select');
+        const prevPanoramaButton = document.getElementById('prev-panorama-button');
+        const nextPanoramaButton = document.getElementById('next-panorama-button');
+        const fullscreenButton = document.getElementById('fullscreen-button');
+
+        const localPanoramaUploadInput = document.getElementById('local-panorama-upload');
+        const uploadLocalPanoramaButton = document.getElementById('upload-local-panorama-button');
+
+        const addHotspotButton = document.getElementById('add-hotspot-button');
+        const addSoundSpotButton = document.getElementById('add-sound-spot-button');
+        const addLensflareButton = document.getElementById('add-lensflare-button');
+        const addPolygonButton = document.getElementById('add-polygon-button');
+        const addPolygonVideoButton = document.getElementById('add-polygon-video-button');
+        const addPolygonImageButton = document.getElementById('add-polygon-image-button');
+        const addWebContentButton = document.getElementById('add-web-content-button');
+        const cropButton = document.getElementById('crop-button');
+
+        // Hotspot Modal elementi
+        const hotspotInputModal = document.getElementById('hotspot-input-modal');
+        const hotspotTypeSelect = document.getElementById('hotspot-type-select');
+        const hotspotTargetPanoramaGroup = document.getElementById('hotspot-target-panorama-group');
+        const hotspotTargetPanoramaSelect = document.getElementById('hotspot-target-panorama');
+        const hotspotAudioUrlGroup = document.getElementById('hotspot-audio-url-group');
+        const hotspotAudioUrlInput = document.getElementById('hotspot-audio-url');
+        const hotspotTextInput = document.getElementById('hotspot-text');
+        const confirmAddHotspotButton = document.getElementById('confirm-add-hotspot');
+        const cancelAddHotspotButton = document.getElementById('cancel-add-hotspot');
+
+
+        // --- Stanje aplikacije ---
+        const appState = {
+            currentAudio: null, // Placeholder za upravljanje zvukom
+            isDarkMode: false,
+            panoramasData: [], // Za čuvanje panorama uključujući generisane
+            isAddingHotspot: false, // Novo stanje za režim dodavanja hotspota
+            hotspotCoords: null // Privremeno čuvanje koordinata za hotspot
+        };
+
+        // --- Funkcije ---
+
+        // Prikazivanje prilagođene poruke
+        function showMessageBox(type, message) {
+            const existingMessageBox = document.querySelector('.custom-message-box');
+            if (existingMessageBox) {
+                existingMessageBox.remove();
+            }
+
+            const messageBox = document.createElement('div');
+            messageBox.classList.add('custom-message-box');
+            let bgColor = '';
+            switch (type) {
+                case 'Info':
+                    bgColor = 'var(--accent-color)';
+                    break;
+                case 'Warning':
+                    bgColor = 'var(--warning-color)';
+                    break;
+                case 'Error':
+                    bgColor = 'var(--danger-color)';
+                    break;
+                default:
+                    bgColor = 'var(--secondary-color)';
+            }
+
+            messageBox.style.backgroundColor = bgColor;
+            messageBox.innerHTML = `<p>${message}</p>`;
+            document.body.appendChild(messageBox);
+
+            // Fade in
+            setTimeout(() => {
+                messageBox.style.opacity = 1;
+            }, 10);
+
+            // Fade out after 3 seconds
+            setTimeout(() => {
+                messageBox.style.opacity = 0;
+                messageBox.addEventListener('transitionend', () => messageBox.remove());
+            }, 3000);
+        }
+
+
+        // Inicijalizacija Firebase-a i autentifikacije
+        async function initializeFirebase() {
+            console.log("initializeFirebase: Starting Firebase initialization.");
+            try {
+                if (Object.keys(firebaseConfig).length > 0) {
+                    // Koristite globalne Firebase objekte
+                    app = firebase.initializeApp(firebaseConfig);
+                    db = firebase.firestore(); // Firestore instance
+                    auth = firebase.auth(); // Auth instance
+                    storage = firebase.storage(); // Inicijalizacija Firebase Storage-a
+                    console.log("initializeFirebase: Firebase app, db, auth, storage initialized.");
+
+                    auth.onAuthStateChanged(async (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            console.log("initializeFirebase: Firebase authenticated. User ID:", userId);
+                        } else {
+                            // Prijavi se anonimno ako nema tokena ili korisnika
+                            await auth.signInAnonymously();
+                            userId = auth.currentUser?.uid || crypto.randomUUID(); // Fallback ako anonimna prijava ne uspe
+                            console.log("initializeFirebase: Firebase signed in anonymously. User ID:", userId);
+                        }
+                        // Učitaj panorame NAKON što je stanje autentifikacije određeno
+                        await loadPanoramasFromFirestore();
+                    });
+
+                    if (initialAuthToken) {
+                        console.log("initializeFirebase: Signing in with custom token.");
+                        await auth.signInWithCustomToken(initialAuthToken);
+                    } else {
+                        console.log("initializeFirebase: No custom token, will sign in anonymously if not already.");
+                    }
+                } else {
+                    console.warn("initializeFirebase: Firebase configuration not provided. Running without Firestore and Storage.");
+                    appState.panoramasData = [...defaultPanoramas];
+                    // If no Firebase, directly initialize Pannellum with default data
+                    initOrUpdatePannellumViewer(appState.panoramasData);
+                }
+            } catch (error) {
+                console.error("initializeFirebase: Error during Firebase initialization:", error);
+                appState.panoramasData = [...defaultPanoramas];
+                // Fallback to default panoramas if Firebase init fails
+                initOrUpdatePannellumViewer(appState.panoramasData);
+            }
+        }
+
+        // Učitavanje panorama iz Firestore-a
+        async function loadPanoramasFromFirestore() {
+            console.log("loadPanoramasFromFirestore: Attempting to load panoramas.");
+            if (!db || !userId) {
+                console.warn("loadPanoramasFromFirestore: Firestore or user ID not available. Using default panoramas.");
+                appState.panoramasData = [...defaultPanoramas]; // Koristi podrazumevane ako nema Firestore-a
+                populatePanoramaSelect();
+                initOrUpdatePannellumViewer(appState.panoramasData); // Initialize or update viewer
+                return;
+            }
+
+            const panoramasCollectionRef = db.collection(`artifacts/${appId}/users/${userId}/panoramas`);
+            panoramasCollectionRef.onSnapshot((snapshot) => {
+                console.log("loadPanoramasFromFirestore: Received Firestore snapshot.");
+                const fetchedPanoramas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // Kombinuj podrazumevane panorame sa preuzetim, dajući prioritet preuzetim ako se ID-ovi poklapaju
+                const combinedPanoramas = [...defaultPanoramas];
+                fetchedPanoramas.forEach(fp => {
+                    const existingIndex = combinedPanoramas.findIndex(p => p.id === fp.id);
+                    if (existingIndex !== -1) {
+                        combinedPanoramas[existingIndex] = fp; // Ažuriraj postojeće
+                    } else {
+                        combinedPanoramas.push(fp); // Dodaj nove
+                    }
+                });
+                appState.panoramasData = combinedPanoramas;
+                console.log("loadPanoramasFromFirestore: Combined panoramas:", appState.panoramasData);
+                populatePanoramaSelect();
+
+                // Initialize or update Pannellum viewer with the latest data
+                initOrUpdatePannellumViewer(appState.panoramasData);
+
+            }, (error) => {
+                console.error("loadPanoramasFromFirestore: Error fetching panoramas from Firestore:", error);
+                showMessageBox('Error', 'Greška pri učitavanju panorama iz baze podataka. Proverite dozvole.');
+                appState.panoramasData = [...defaultPanoramas]; // Fallback na podrazumevane
+                populatePanoramaSelect();
+                initOrUpdatePannellumViewer(appState.panoramasData); // Initialize or update viewer with fallback data
+            });
+        }
+
+        // Čuvanje panorame u Firestore
+        async function savePanoramaToFirestore(panorama) {
+            console.log("savePanoramaToFirestore: Attempting to save panorama:", panorama.id);
+            if (!db || !userId) {
+                console.warn("savePanoramaToFirestore: Firestore or user ID not available for saving panorama.");
+                return;
+            }
+            try {
+                const docRef = db.collection(`artifacts/${appId}/users/${userId}/panoramas`).doc(panorama.id);
+                // Važno: Sada se u Firestore čuva samo URL, ne cela Base64 slika
+                const panoramaToSave = { ...panorama };
+                // Ako je panorama lokalno učitana i ima base64 URL, ne želimo da je čuvamo u Firestore
+                // već samo URL iz Storage-a
+                if (panoramaToSave.url.startsWith('data:')) {
+                    // Ovo bi trebalo da se desi samo ako je upload na Storage uspeo
+                    // i panorama.url je već ažuriran na Storage URL
+                    console.warn("Attempting to save Base64 data to Firestore. This should not happen if Storage upload is successful.");
+                    // Uklonite Base64 URL ako je slučajno ostao
+                    panoramaToSave.url = ''; // Ili postavite na placeholder
+                }
+
+                await docRef.set(panoramaToSave, { merge: true });
+                console.log("savePanoramaToFirestore: Panorama saved to Firestore:", panorama.id);
+            } catch (e) {
+                console.error("savePanoramaToFirestore: Error adding/updating document: ", e);
+                showMessageBox('Error', 'Greška pri čuvanju panorame u bazu podataka. Proverite dozvole.');
+            }
+        }
+
+        // Popunjavanje padajućeg menija za izbor panorama
+        function populatePanoramaSelect() {
+            console.log("populatePanoramaSelect: Populating panorama select dropdowns.");
+            panoramaSelect.innerHTML = ''; // Obriši postojeće opcije
+            hotspotTargetPanoramaSelect.innerHTML = ''; // Obriši opcije i za hotspot modal
+
+            if (appState.panoramasData.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Nema panorama';
+                panoramaSelect.appendChild(option);
+                hotspotTargetPanoramaSelect.appendChild(option.cloneNode(true));
+                panoramaSelect.disabled = true;
+                hotspotTargetPanoramaSelect.disabled = true;
+                return;
+            }
+            panoramaSelect.disabled = false;
+            hotspotTargetPanoramaSelect.disabled = false;
+            appState.panoramasData.forEach((p, index) => {
+                const option = document.createElement('option');
+                option.value = p.id; // Koristi ID kao vrednost
+                option.textContent = p.title;
+                option.dataset.index = index; // Sačuvaj indeks za lako pronalaženje
+                panoramaSelect.appendChild(option);
+
+                const hotspotOption = document.createElement('option');
+                hotspotOption.value = p.id;
+                hotspotOption.textContent = p.title;
+                hotspotTargetPanoramaSelect.appendChild(hotspotOption);
+            });
+            // Postavi izabranu opciju na trenutnu panoramu
+            if (appState.panoramasData[currentPanoramaIndex]) {
+                panoramaSelect.value = appState.panoramasData[currentPanoramaIndex].id;
+                console.log("populatePanoramaSelect: Set main select value to:", panoramaSelect.value);
+            }
+        }
+
+        // Inicijalizacija ili ažuriranje Pannellum pregledača i scena
+        function initOrUpdatePannellumViewer(panoramasToLoad) {
+            console.log("initOrUpdatePannellumViewer: Called with", panoramasToLoad.length, "panoramas.");
+
+            if (panoramasToLoad.length === 0) {
+                console.warn("initOrUpdatePannellumViewer: No panoramas to load. Viewer will be empty.");
+                if (viewer) {
+                    viewer.destroy(); // Uništi postojeći pregledač ako nema panorama
+                    viewer = null;
+                }
+                currentPanoramaConfig = null;
+                return;
+            }
+
+            // Odredi koja panorama treba da bude prikazana
+            let targetPanoramaData = appState.panoramasData[currentPanoramaIndex];
+            if (!targetPanoramaData) {
+                targetPanoramaData = panoramasToLoad[0]; // Fallback na prvu ako trenutna nije pronađena
+                currentPanoramaIndex = 0;
+            }
+
+            // Pripremi konfiguraciju za Pannellum
+            const pannellumConfig = {
+                "type": "equirectangular",
+                "panorama": targetPanoramaData.url,
+                "autoLoad": true,
+                "hotSpots": [] // Hotspotovi će biti dodati kasnije
+            };
+
+            // Ako Pannellum već postoji, ažuriraj ga, inače ga kreiraj
+            if (viewer) {
+                console.log("initOrUpdatePannellumViewer: Updating existing Pannellum viewer.");
+                viewer.destroy(); // Uništi postojeći pregledač pre ponovne inicijalizacije
+                viewer = null; // Resetuj viewer
+            }
+
+            console.log("initOrUpdatePannellumViewer: Initializing new Pannellum viewer with:", targetPanoramaData.title);
+            viewer = pannellum.viewer('panorama-viewer', pannellumConfig);
+            currentPanoramaConfig = targetPanoramaData; // Sačuvaj trenutnu konfiguraciju
+
+            // Dodaj hotspotove nakon što je Pannellum inicijalizovan
+            addHotspotsToCurrentPanorama();
+        }
+
+        // Dodavanje hotspota na trenutnu panoramu (Pannellum specifično)
+        function addHotspotsToCurrentPanorama() {
+            console.log("addHotspotsToCurrentPanorama: Adding hotspots to current panorama.");
+            if (!viewer || !currentPanoramaConfig) {
+                console.warn("addHotspotsToCurrentPanorama: No Pannellum viewer or current panorama config to add hotspots to.");
+                return;
+            }
+
+            // Pannellum nema direktnu metodu za uklanjanje svih hotspota odjednom
+            // S obzirom na to da initOrUpdatePannellumViewer već uništava i ponovo kreira,
+            // ovde samo dodajemo hotspotove nakon što je novi viewer kreiran.
+
+            if (currentPanoramaConfig.hotspots && currentPanoramaConfig.hotspots.length > 0) {
+                console.log("addHotspotsToCurrentPanorama: Found hotspots in current panorama data:", currentPanoramaConfig.hotspots);
+                currentPanoramaConfig.hotspots.forEach(hotspotData => {
+                    const hotspotId = hotspotData.id;
+                    const hotspotType = hotspotData.type;
+                    const text = hotspotData.text;
+                    const targetSceneId = hotspotData.targetSceneId;
+                    const audioUrl = hotspotData.audioUrl;
+
+                    let customHtml = '';
+                    let cssClass = 'pnlm-hotspot'; // Osnovna klasa
+
+                    if (hotspotType === 'scene') {
+                        customHtml = `<i class="fas fa-arrow-right"></i>`;
+                        cssClass += ' scene-hotspot';
+                    } else if (hotspotType === 'info') {
+                        customHtml = `<i class="fas fa-info"></i>`;
+                        cssClass += ' info-hotspot';
+                    } else if (hotspotType === 'audio') {
+                        customHtml = `<i class="fas fa-volume-up"></i>`;
+                        cssClass += ' audio-hotspot';
+                    }
+
+                    viewer.addHotSpot({
+                        "pitch": hotspotData.pitch,
+                        "yaw": hotspotData.yaw,
+                        "type": "info", // Pannellum koristi 'info' za custom HTML hotspotove
+                        "cssClass": cssClass,
+                        "createTooltipFunc": function(hotSpotDiv) {
+                            hotSpotDiv.innerHTML = customHtml;
+                            hotSpotDiv.addEventListener('click', () => {
+                                if (hotspotType === 'scene') {
+                                    loadPanorama(targetSceneId);
+                                    showMessageBox('Info', `Prelazak na: ${text}`);
+                                } else if (hotspotType === 'info') {
+                                    showMessageBox('Info', text);
+                                } else if (hotspotType === 'audio') {
+                                    if (appState.currentAudio) {
+                                        appState.currentAudio.pause();
+                                        appState.currentAudio.currentTime = 0;
+                                    }
+                                    const audio = new Audio(audioUrl);
+                                    audio.play().catch(e => console.error("Greška pri reprodukciji zvuka:", e));
+                                    appState.currentAudio = audio;
+                                    showMessageBox('Info', `Reprodukujem zvuk: ${text}`);
+                                }
+                            });
+                        }
+                    }, hotspotId); // Prosledite ID da bi se hotspot mogao referencirati
+                    console.log(`addHotspotsToCurrentPanorama: Added hotspot ${hotspotId} (Type: ${hotspotType})`);
+                });
+            } else {
+                console.log("addHotspotsToCurrentPanorama: No hotspots found for current panorama.");
+            }
+        }
+
+
+        // Učitavanje nove panorame (scene) u Pannellum pregledač
+        function loadPanorama(panoramaId) {
+            console.log("loadPanorama: Attempting to load panorama with ID:", panoramaId);
+            if (!viewer) {
+                showMessageBox('Error', 'Pannellum pregledač nije inicijalizovan.');
+                console.error("loadPanorama: Viewer is not initialized.");
+                return;
+            }
+
+            const targetPanoramaData = appState.panoramasData.find(p => p.id === panoramaId);
+            if (!targetPanoramaData) {
+                showMessageBox('Error', `Panorama sa ID-jem "${panoramaId}" nije pronađena.`);
+                console.error("loadPanorama: Target panorama data not found for ID:", panoramaId);
+                return;
+            }
+
+            // Ažuriraj Pannellum pregledač sa novom panoramom
+            viewer.load({
+                "type": "equirectangular",
+                "panorama": targetPanoramaData.url,
+                "hotSpots": [] // Hotspotovi će biti dodati nakon učitavanja
+            });
+            currentPanoramaConfig = targetPanoramaData; // Ažuriraj trenutnu konfiguraciju
+
+            // Ažuriraj indeks trenutne panorame
+            currentPanoramaIndex = appState.panoramasData.findIndex(p => p.id === panoramaId);
+            panoramaSelect.value = panoramaId;
+
+            // Dodaj hotspotove za novu panoramu nakon što je učitana
+            viewer.on('load', function() {
+                console.log("loadPanorama: Pannellum loaded new panorama. Adding hotspots.");
+                addHotspotsToCurrentPanorama();
+            });
+        }
+
+
+        // Ažuriranje pregleda uživo (originalna funkcionalnost)
+        function updateLivePreview() {
+            console.log("updateLivePreview: Opening live preview.");
+            const html = document.documentElement.outerHTML;
+            const previewWindow = window.open('', '_blank');
+            if (previewWindow) {
+                previewWindow.document.open();
+                previewWindow.document.write(html);
+                previewWindow.document.close();
+            } else {
+                console.error("updateLivePreview: Could not open preview window. Pop-ups might be blocked.");
+                showMessageBox('Error', 'Greška: Nije moguće otvoriti prozor za pregled. Pop-up prozori su možda blokirani.');
+            }
+        }
+
+        // Opcija za izvoz (preuzimanje HTML fajla)
+        function exportVirtualTour() {
+            console.log("exportVirtualTour: Exporting virtual tour HTML.");
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: "text/html" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "virtual-tour.html";
+            a.click();
+            URL.revokeObjectURL(a.href); // Očisti URL
+            showMessageBox('Info', 'HTML fajl je uspešno izvezen!');
+        }
+
+        // Prebacivanje tamnog režima
+        function toggleDarkMode() {
+            console.log("toggleDarkMode: Toggling dark mode.");
+            appState.isDarkMode = !appState.isDarkMode;
+            document.body.classList.toggle('dark-mode', appState.isDarkMode);
+            darkModeToggle.innerHTML = appState.isDarkMode ? '<i class="fas fa-sun"></i> Svetli režim' : '<i class="fas fa-moon"></i> Tamni režim';
+        }
+
+        // --- Slušaoci događaja ---
+
+        // Prebacivanje tamnog režima
+        darkModeToggle.addEventListener('click', toggleDarkMode);
+
+        // Dugme za pregled
+        previewButton.addEventListener('click', updateLivePreview);
+
+        // Dugme za izvoz
+        exportButton.addEventListener('click', exportVirtualTour);
+
+        // Panorama izbor
+        panoramaSelect.addEventListener('change', (event) => {
+            const selectedPanoramaId = event.target.value;
+            console.log("panoramaSelect: Selected panorama ID:", selectedPanoramaId);
+            const index = appState.panoramasData.findIndex(p => p.id === selectedPanoramaId);
+            if (index !== -1) {
+                currentPanoramaIndex = index;
+                loadPanorama(selectedPanoramaId);
+            } else {
+                showMessageBox('Error', 'Izabrana panorama nije pronađena.');
+                console.error("panoramaSelect: Selected panorama not found in appState.panoramasData.");
+            }
+        });
+
+        // Prethodna panorama
+        prevPanoramaButton.addEventListener('click', () => {
+            console.log("prevPanoramaButton: Previous panorama clicked.");
+            if (appState.panoramasData.length === 0) {
+                showMessageBox('Warning', 'Nema panorama za prebacivanje.');
+                return;
+            }
+            currentPanoramaIndex = (currentPanoramaIndex - 1 + appState.panoramasData.length) % appState.panoramasData.length;
+            const newPanorama = appState.panoramasData[currentPanoramaIndex];
+            loadPanorama(newPanorama.id); // Učitaj scenu po ID-ju
+            panoramaSelect.value = newPanorama.id; // Ažuriraj padajući meni
+        });
+
+        // Sledeća panorama
+        nextPanoramaButton.addEventListener('click', () => {
+            console.log("nextPanoramaButton: Next panorama clicked.");
+            if (appState.panoramasData.length === 0) {
+                showMessageBox('Warning', 'Nema panorama za prebacivanje.');
+                return;
+            }
+            currentPanoramaIndex = (currentPanoramaIndex + 1) % appState.panoramasData.length;
+            const newPanorama = appState.panoramasData[currentPanoramaIndex];
+            loadPanorama(newPanorama.id); // Učitaj scenu po ID-ju
+            panoramaSelect.value = newPanorama.id; // Ažuriraj padajući meni
+        });
+
+        // Celozaslonski prikaz
+        fullscreenButton.addEventListener('click', () => {
+            console.log("fullscreenButton: Fullscreen button clicked.");
+            if (viewer) {
+                viewer.toggleFullscreen(); // Pannellum ima toggleFullscreen
+            } else {
+                showMessageBox('Warning', 'Nema aktivnog pregledača za celozaslonski prikaz.');
+            }
+        });
+
+        // Event listener za dugme za upload lokalne panorame
+        uploadLocalPanoramaButton.addEventListener('click', () => {
+            console.log("uploadLocalPanoramaButton: Upload button clicked.");
+            localPanoramaUploadInput.click(); // Aktiviraj skriveni input za fajl
+        });
+
+        // Event listener kada se izabere fajl
+        localPanoramaUploadInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            console.log("localPanoramaUploadInput: File selected:", file?.name);
+            if (file) {
+                // Prikaži loading overlay
+                loadingOverlay.classList.remove('hidden');
+                showMessageBox('Info', 'Učitavanje panorame...');
+
+                const newPanoramaId = `local-${Date.now()}`;
+                const storageRef = storage.ref(`artifacts/${appId}/users/${userId}/panoramas/${newPanoramaId}_${file.name}`);
+                const uploadTask = storageRef.put(file);
+
+                uploadTask.on('state_changed',
+                    (snapshot) => {
+                        // Praćenje progresa uploada (opciono)
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        console.log('Upload je ' + progress + '% završen');
+                        // Možete ažurirati UI sa progresom ovde
+                    },
+                    (error) => {
+                        // Obrada grešaka pri uploadu
+                        console.error("Greška pri uploadu slike u Firebase Storage:", error);
+                        showMessageBox('Error', 'Greška pri uploadu slike: ' + error.message);
+                        loadingOverlay.classList.add('hidden');
+                    },
+                    async () => {
+                        // Upload je završen
+                        try {
+                            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                            console.log('Fajl dostupan na:', downloadURL);
+
+                            const newPanorama = { id: newPanoramaId, url: downloadURL, title: `Lokalno: ${file.name}`, hotspots: [] };
+
+                            appState.panoramasData.push(newPanorama);
+                            currentPanoramaIndex = appState.panoramasData.length - 1;
+                            populatePanoramaSelect();
+                            panoramaSelect.value = newPanorama.id; // Ažuriraj padajući meni
+                            initOrUpdatePannellumViewer(appState.panoramasData); // Ponovo inicijalizuj pregledač sa ažuriranim podacima
+                            loadPanorama(newPanorama.id); // Osiguraj da je novo dodana panorama aktivna
+                            await savePanoramaToFirestore(newPanorama); // Sačuvaj URL u Firestore
+                            showMessageBox('Info', `Panorama "${file.name}" je uspešno učitana i prikazana.`);
+                        } catch (error) {
+                            console.error("Greška pri dobijanju URL-a ili čuvanju u Firestore:", error);
+                            showMessageBox('Error', 'Greška pri obradi slike nakon uploada: ' + error.message);
+                        } finally {
+                            loadingOverlay.classList.add('hidden');
+                        }
+                    }
+                );
+            }
+        });
+
+        // Hotspot Type Select Change Listener
+        hotspotTypeSelect.addEventListener('change', (event) => {
+            const selectedType = event.target.value;
+            console.log("hotspotTypeSelect: Hotspot type changed to:", selectedType);
+            if (selectedType === 'scene') {
+                hotspotTargetPanoramaGroup.style.display = 'flex';
+                hotspotAudioUrlGroup.style.display = 'none';
+            } else if (selectedType === 'audio') {
+                hotspotTargetPanoramaGroup.style.display = 'none';
+                hotspotAudioUrlGroup.style.display = 'flex';
+            } else { // info
+                hotspotTargetPanoramaGroup.style.display = 'none';
+                hotspotAudioUrlGroup.style.display = 'none';
+            }
+        });
+
+        // Dodavanje Hotspota (ulazak u režim klika)
+        addHotspotButton.addEventListener('click', () => {
+            console.log("addHotspotButton: Add Hotspot button clicked.");
+            if (!viewer) {
+                showMessageBox('Warning', 'Molimo učitajte panoramu pre dodavanja hotspota.');
+                return;
+            }
+
+            appState.isAddingHotspot = !appState.isAddingHotspot;
+            if (appState.isAddingHotspot) {
+                showMessageBox('Info', 'Kliknite na panoramu da dodate hotspot.');
+                panoramaViewerDiv.classList.add('adding-mode'); // Dodaj klasu za kursor
+            } else {
+                showMessageBox('Info', 'Režim dodavanja hotspota isključen.');
+                panoramaViewerDiv.classList.remove('adding-mode'); // Ukloni klasu za kursor
+            }
+        });
+
+        // Klik listener za panorama pregledač za dodavanje hotspota
+        panoramaViewerDiv.addEventListener('click', (event) => {
+            console.log("panoramaViewerDiv: Clicked on panorama viewer.");
+            if (!viewer || !appState.isAddingHotspot) return;
+
+            // Pannellum-ova metoda za dobijanje pitch i yaw iz koordinata ekrana
+            const coords = viewer.mouseEventToCoords(event);
+            appState.hotspotCoords = coords;
+            console.log("panoramaViewerDiv: Hotspot coordinates captured:", coords);
+
+            // Prikaži modal za unos hotspota
+            hotspotInputModal.classList.remove('hidden');
+            hotspotTextInput.value = ''; // Resetuj tekst
+
+            // Popuni select opcijama za ciljne panorame
+            populatePanoramaSelect(); // Ovo već popunjava hotspotTargetPanoramaSelect
+            if (hotspotTargetPanoramaSelect.options.length > 0) {
+                hotspotTargetPanoramaSelect.value = appState.panoramasData[0].id; // Podrazumevano prva panorama
+            }
+            hotspotTypeSelect.value = 'scene'; // Podrazumevani tip je scena
+            hotspotTypeSelect.dispatchEvent(new Event('change')); // Aktiviraj promenu prikaza
+
+            // Isključi režim dodavanja hotspota dok je modal otvoren
+            appState.isAddingHotspot = false;
+            panoramaViewerDiv.classList.remove('adding-mode');
+        });
+
+        // Potvrda dodavanja hotspota iz modala
+        confirmAddHotspotButton.addEventListener('click', async () => {
+            console.log("confirmAddHotspotButton: Confirm Add Hotspot button clicked.");
+            const pitch = appState.hotspotCoords.pitch;
+            const yaw = appState.hotspotCoords.yaw;
+            const hotspotType = hotspotTypeSelect.value;
+            const hotspotText = hotspotTextInput.value.trim();
+
+            let newHotspotData = {
+                id: `hotspot-${Date.now()}`,
+                pitch: pitch,
+                yaw: yaw,
+                type: hotspotType,
+                text: hotspotText
+            };
+
+            if (hotspotType === 'scene') {
+                const targetPanoramaId = hotspotTargetPanoramaSelect.value;
+                if (!targetPanoramaId) {
+                    showMessageBox('Warning', 'Molimo izaberite ciljnu panoramu.');
+                    console.warn("confirmAddHotspotButton: No target panorama selected for scene hotspot.");
+                    return;
+                }
+                if (appState.panoramasData.length <= 1) { // Dodata provera ovde
+                    showMessageBox('Warning', 'Potrebno je više od jedne panorame za dodavanje hotspota za prelaz.');
+                    console.warn("confirmAddHotspotButton: Not enough panoramas for scene hotspot.");
+                    return;
+                }
+                newHotspotData.targetSceneId = targetPanoramaId;
+                newHotspotData.text = hotspotText || `Idi na ${appState.panoramasData.find(p => p.id === targetPanoramaId)?.title || 'nepoznatu scenu'}`;
+            } else if (hotspotType === 'audio') {
+                const audioUrl = hotspotAudioUrlInput.value.trim();
+                if (!audioUrl) {
+                    showMessageBox('Warning', 'Molimo unesite URL za audio.');
+                    console.warn("confirmAddHotspotButton: No audio URL provided for audio hotspot.");
+                    return;
+                }
+                newHotspotData.audioUrl = audioUrl;
+                newHotspotData.text = hotspotText || `Audio na P:${pitch.toFixed(2)}, Y:${yaw.toFixed(2)}`;
+            } else { // info
+                newHotspotData.text = hotspotText || `Informacija na P:${pitch.toFixed(2)}, Y:${yaw.toFixed(2)}`;
+            }
+
+            // Dodaj hotspot u podatke trenutne panorame u appState
+            const currentPanoData = appState.panoramasData[currentPanoramaIndex];
+            if (currentPanoData) {
+                if (!currentPanoData.hotspots) {
+                    currentPanoData.hotspots = [];
+                }
+                currentPanoData.hotspots.push(newHotspotData);
+                await savePanoramaToFirestore(currentPanoData); // Sačuvaj ažurirane podatke u Firestore
+                addHotspotsToCurrentPanorama(); // Ponovo učitaj hotspotove za trenutnu scenu
+                showMessageBox('Info', `Hotspot "${newHotspotData.text}" je uspešno dodat.`);
+                console.log("confirmAddHotspotButton: Hotspot added successfully.");
+            } else {
+                showMessageBox('Error', 'Nije moguće pronaći trenutnu panoramu za dodavanje hotspota.');
+                console.error("confirmAddHotspotButton: Could not find current panorama data to add hotspot.");
+            }
+
+            hotspotInputModal.classList.add('hidden');
+            appState.hotspotCoords = null; // Resetuj koordinate
+        });
+
+        // Poništavanje dodavanja hotspota iz modala
+        cancelAddHotspotButton.addEventListener('click', () => {
+            console.log("cancelAddHotspotButton: Cancel Add Hotspot button clicked.");
+            hotspotInputModal.classList.add('hidden');
+            appState.hotspotCoords = null; // Resetuj koordinate
+            showMessageBox('Info', 'Dodavanje hotspota je poništeno.');
+        });
+
+
+        // Placeholder za ostala dugmad (koristeći prilagođene poruke)
+        addLensflareButton.addEventListener('click', () => {
+            showMessageBox('Warning', 'Dodaj Lensflare - Funkcionalnost nije implementirana. Zahteva napredniju grafičku implementaciju.');
+        });
+        addPolygonButton.addEventListener('click', () => {
+            showMessageBox('Warning', 'Dodaj Polygon - Funkcionalnost nije implementirana. Zahteva napredniju grafičku interakciju.');
+        });
+        addPolygonVideoButton.addEventListener('click', () => {
+            showMessageBox('Warning', 'Polygon Video Spot - Funkcionalnost nije implementirana. Zahteva napredniju grafičku implementaciju.');
+        });
+        addPolygonImageButton.addEventListener('click', () => {
+            showMessageBox('Warning', 'Polygon Image Spot - Funkcionalnost nije implementirana. Zahteva napredniju grafičku implementaciju.');
+        });
+        addWebContentButton.addEventListener('click', () => {
+            showMessageBox('Warning', 'Dodaj Web Sadržaj - Funkcionalnost nije implementirana. Zahteva složenu integraciju sa iframe-ovima ili slično.');
+        });
+        cropButton.addEventListener('click', () => {
+            showMessageBox('Warning', 'Iseci Panoramu - Funkcionalnost nije implementirana. Zahteva obradu slike.');
+        });
+
+        // Inicijalno podešavanje pri učitavanju prozora
+        window.onload = function() {
+            console.log("window.onload: Page fully loaded. Initializing Firebase.");
+            initializeFirebase(); // Ovo će takođe inicijalizovati Pannellum kada autentifikacija bude spremna
+            // Postavi početno stanje tamnog režima na osnovu sistemskih preferencija ili sačuvanog stanja
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.body.classList.add('dark-mode');
+                appState.isDarkMode = true;
+                darkModeToggle.innerHTML = '<i class="fas fa-sun"></i> Svetli režim';
+                console.log("window.onload: Dark mode detected and applied.");
+            }
+        };
+    </script>
+
+
+
+</body></html>
